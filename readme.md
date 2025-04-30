@@ -3,18 +3,15 @@
 ## კონკურსის მოკლე მიმოხილვა
 Kaggle-ზე Fraud Detection პრობლემა, რომლის ამოცანაა fraud ტრანზაქციების იდენტიფიცირება.
 
-## ჩვენი მიდგომა
-მონაცემთა გაწმენდა, მახასიათებლების ინჟინერია, მოდელის შერჩევა და შედეგების შეფასება MLflow-ის მეშვეობით.
 
 ## რეპოზიტორიის სტრუქტურა
 - model_experiment_*.ipynb - თითოეული მოდელის ექსპერიმენტები
 - model_inference.ipynb - საბოლოო პროგნოზირება
-- pipeline/ - შენახული საუკეთესო pipeline-ები
+- initial_data_inspection.ipynb -  საწყისი სამუშაო ფაილი ვიზუალიზაციებისთვის
 - README.md - ეს ფაილი
 
 ## Feature Engineering
 - გადავარჩიe >= 90% NaN მნიშვნელობების მქონე სვეტები
-- Email Domain-ების გაწმენდა
 - TransactionAmt → Log
 - Timestamp features, კერძოდ **TransactionDT** გავხსენით დროის ფუნქციებად:
    - **დღე** (`Transaction_day`)
@@ -22,12 +19,12 @@ Kaggle-ზე Fraud Detection პრობლემა, რომლის ა�
    - **კვირის დღე** (`Transaction_weekday`)
    ამ ახალი feature-ების გამოყვანა საბოლოო ჯამში ვფიქრობ კარგი გადაწყვეტილება იყო, რადგან  **weekly** (კვირების მიხედვით) და **hourly** (საათების მიხედვით) isFraud განაწილების გრაფიკები, რომ ვნახოთ თაღლითობა სად იჩენს თავს, საინტერესომ იყო საათის მიხედვით isFraud განაწილება:
 ![alt text](image-2.png)
-- **Freq-Encoding**: ყველა ფუნქციისთვის ვიღებთ სიხშირის კოდირებას.
 - Woe encoding
 
 
+
 ## Imbalance Treatment
-საკმაოდ დიდი პროცენტული განსხავება იყო fraud vs non-fraud ტრანზაქციებს შორის, ამიტომ გამოვიყენე როგორც undersampling, ასევე SMOTE sampling მიდგომები. 
+საკმაოდ დიდი პროცენტული განსხავება იყო fraud vs non-fraud ტრანზაქციებს შორის, ამიტომ გამოვიყენე როგორც undersampling, ასევე SMOTE  და oversampling მიდგომები. 
 ![alt text](image-3.png)
 
 
@@ -85,21 +82,18 @@ df['uid_card1_email_day'] = df['card1'].astype(str) + '-' + df['P_emaildomain'].
 
 ## Nan დამუშავება
 - Numerical Features-ებისთვის ოპტიმალური აღმოჩნდა median ით შევსება, ხოლო რაც შეეხება 
+- Cat -> mode, ზოგიერთ შემთხვევაში 'unkown'
 
 
 ## Feature Selection
 
 - გამოვიყენებთ XGBoost-ს cross-validation-ით.
-- Permutation Importance:
-  - წავშლით იმ მახასიათებლებს, რომელთა შერყევა **არცერთ** მოდელს არ აუმჯობესებს.
-  - გავიმეორებთ პროცესს სანამ არ დარჩება მუდმივი ფუნქციების სია.
-
-- Correlation
+- Permutation Importance
+- Correlation Filtering ფაიფლაინში ჩადგმული
 - Feature Importance (XGBoost)
 - Recursive Feature Elimination
 
 ## Model Training
-- ყველა ტრენინგის შემთვევაში Train/Test/Validation დაყოფილია დროის მიხედვით.
 
 ### Logistic Regression
 პირველი მოდელი [[V1](https://dagshub.com/ekvirika/FraudDerection.mlflow/#/experiments/0/runs/e7fd10e5f0e64cb5b8e8ee3d2363ddbd)] გავუშვი კორელაციის ფილტრის გარეშე და დააბრუნა შედეგი roc=0.7485727239817843, 
@@ -110,15 +104,10 @@ Class | Precision | Recall | F1-score | Support
 
 ამის შემდეგ დავამატე კორელაციის ფილტრი და მიღებული შედეგი იყო roc = 0.7872601369670138 [[V2](https://dagshub.com/ekvirika/FraudDerection.mlflow/#/experiments/0/runs/05c36102d21041dd968a96d798991c0f)]. გამოვიყენე SelectKBest=50 feature. 
 
-ამის შემდეგ ვცადე user_id feature რომ გამოვიყვანე მაგითი გაწვრთნა. წამოვიღე mlflow-დან `card1_addr1` სტრატეგიით შექმნილი user_id და Train/Test სპლიტი გავაკეთე ამ user_id-ს გათვალისწინებით. გარდა ამისა, დავამატე oversampler-ი, ისე რომ 40%-ზე დავიყვანე 
-
-
-
-
-- ასევე ვცადე RandomOverSampler კლასის გამოყენება და განაწილება დავიყვანე 0.67-ზე, მაგრამ ასე გაწვრთნილი მოდელის პერფორმანსი დაეცა [[V4](https://dagshub.com/ekvirika/FraudDerection.mlflow/#/experiments/0/runs/228c6dcda7c84c1cbdf882d054591078)] და ` ROC_AUC = 0.756866686965556`. 
+- ამის შემდეგ ვცადე user_id feature რომ გამოვიყვანე მაგითი გაწვრთნა. წამოვიღე mlflow-დან `card1_addr1` სტრატეგიით შექმნილი user_id და Train/Test სპლიტი გავაკეთე ამ user_id-ს გათვალისწინებით. ასევე ვცადე RandomOverSampler კლასის გამოყენება და განაწილება დავიყვანე 0.67-ზე, მაგრამ ასე გაწვრთნილი მოდელის პერფორმანსი დაეცა [[V4](https://dagshub.com/ekvirika/FraudDerection.mlflow/#/experiments/0/runs/228c6dcda7c84c1cbdf882d054591078)] და ` ROC_AUC = 0.756866686965556`. 
 მგონია ეს ყოველივე უფრო LogisticRegression-ის ბრალია, ვიდრე ამოცანის კომპლექსურობის, iმიტომ რომ ვეცადე LogisticRegression-ის პარამეტრების შეცვლა, მაგრამ მაინც ` ROC_AUC = 0.7568542564843799` მივიღე [[V5](https://dagshub.com/ekvirika/FraudDerection.mlflow/#/experiments/0/runs/21405830d57e49439b05bf8580dc6b36)]. 
 
-ამის შემდეგ, GridSearch გავუშვი იქნებ რამე უკეთესი კომბინაცია დაეგდო, მიუხედავად იმისა რომ იმედი გადამეწურა LogisticRegression-ზე და ერთი სული მქონდა ხისებრ მოდელებზე როდის გადავიდოდი, მაინც მინდოდა 0.8-ზე მეტი AUC დამენახა.
+ამის შემდეგ, GridSearch გავუშვი იქნებ რამე უკეთესი კომბინაცია დაეგდო, მიუხედავად იმისა რომ იმედი გადამეწურა LogisticRegression-ზე და ერთი სული მქონდა ხისებრ მოდელებზე როდის გადავიდოდი, მაინც მინდოდა 0.8-ზე მეტი AUC დამენახა, მაგრამ უშედეგოდ და ესაა ფინალური მოდელი: [LogReg-final](https://dagshub.com/ekvirika/FraudDerection.mlflow/#/experiments/0/runs/232cd843553f40ff81ce556f6e3e4b78)
 
 
 ### XGBoost
@@ -167,17 +156,33 @@ df['user_id'] = df['card1'].astype(str) + "_" + \
 
 
 ამის შემდეგ, ვცადე SMOTE დაბალანსება და f1_score ოდნავ გაუმჯობესდა [V6](https://dagshub.com/ekvirika/FraudDerection.mlflow/#/experiments/1/runs/6a4a7ae0102c47c282bd93ded764262f). AUC=0.92 ამ შემთხვევაში, მაგრამ კიდევ ვცადე f1_score, recall გაუმჯობესება და რამდენიმე დაბალანსების განსხავვებული სტრატეგიის ექსპერიმენტი გავუშვი, მაგრამ ძალიან უცნაური შედეგი მივიღე: no_resampling სტრატეგიას ყველაზე კარგი შედეგი ჰქონდა :D 
+- ესაა საბოლოო მოდელი: 
 
-### Decision Tree
+
+### Gradient Boosting and Decision Tree
+ვცადე ზუსტად იგივე პარამეტრებზე decision tree, xgboost da gradient boosting. შედეგი იყო ეს: 
+![alt text](image-4.png)
+
+### 🔍 Model Comparison
+
+| Model              | Accuracy (Train) | Accuracy (Test) | AUC (Train) | AUC (Test) | Avg Precision (Train) | Avg Precision (Test) | F1 Score (Train) | F1 Score (Test) |
+|-------------------|------------------|-----------------|-------------|------------|------------------------|-----------------------|------------------|-----------------|
+| Decision Tree      | 0.950336         | 0.944856        | 0.951665    | 0.884567   | 0.595225               | 0.487487              | 0.509070         | 0.450333        |
+| Gradient Boosting  | 0.976115         | 0.972618        | 0.960905    | 0.909742   | 0.702894               | 0.605515              | 0.646735         | 0.585385        |
+| XGBoost            | 0.974062         | 0.970756        | 0.960937    | 0.906146   | 0.704358               | 0.604459              | 0.635319         | 0.578575        |
 
 
+რადგან Gradient Boosting-ს და XGBoost-ს თითქმის ერთნაირი შედეგები ჰქონდათ იდენტურ დატასეტებზე, ამიტომ დიდად აღარ მიწვალია ამ ორი მოდელის ჰიპერპარამეტრების ოპტიმიზაციით.
+
+mlflow:
+ -  [Decision Tree Training](https://dagshub.com/ekvirika/FraudDerection.mlflow/#/experiments/6?searchFilter=&orderByKey=attributes.start_time&orderByAsc=false&startTime=ALL&lifecycleFilter=Active&modelVersionFilter=All+Runs&datasetsFilter=W10%3D)
+ - [Gradient Boosting Training](https://dagshub.com/ekvirika/FraudDerection.mlflow/#/experiments/11?searchFilter=&orderByKey=attributes.start_time&orderByAsc=false&startTime=ALL&lifecycleFilter=Active&modelVersionFilter=All+Runs&datasetsFilter=W10%3D)
 
 
 
 ### Random Forest
 იგივე დატასეტზწე user_id feature = card1_addr1 დატასეტზე გავუშვი პირველი fit
-[V1](https://dagshub.com/ekvirika/FraudDerection.mlflow/#/experiments/3?searchFilter=&orderByKey=attributes.start_time&orderByAsc=false&startTime=ALL&lifecycleFilter=Active&modelVersionFilter=All+Runs&datasetsFilter=W10%3D) და არც ისეთი ცუდი შედეგი დააგდო, roc_auc = 0.8866786798545425. თუმცა ამ შემთხვევაში არ მქონდა TransactionDT გარდაქმნილი. ამის შემდეგ ვცადე სხვა feature engineering მიდგომა და უკვე დავაენკოდე თარიღების მიხედვითაც: 
-
+[V1](https://dagshub.com/ekvirika/FraudDerection.mlflow/#/experiments/3?searchFilter=&orderByKey=attributes.start_time&orderByAsc=false&startTime=ALL&lifecycleFilter=Active&modelVersionFilter=All+Runs&datasetsFilter=W10%3D) და არც ისეთი ცუდი შედეგი დააგდო, roc_auc = 0.8866786798545425. თუმცა ამ შემთხვევაში არ მქონდა TransactionDT გარდაქმნილი. ამის შემდეგ ვცადე სხვა feature engineering მიდგომა და უკვე დავაენკოდე თარიღების მიხედვითაც, თუმცა შედეგი დიდად არ შეცვლილა. 
 
 
 
